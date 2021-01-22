@@ -57,11 +57,4 @@ public class RedissonTest implements Runnable {
             new Thread(new RedissonTest()).start();
         }
     }
-    public static void mainB(String[] args) {
-        init();
-
-        for (int i = 0; i < 100; i++) {
-            new Thread(new RedissonTest()).start();
-        }
-    }
 }
