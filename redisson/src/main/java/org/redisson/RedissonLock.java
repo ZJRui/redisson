@@ -125,8 +125,8 @@ public class RedissonLock extends RedissonExpirable implements RLock {
         super(commandExecutor, name);
         this.commandExecutor = commandExecutor;
         this.id = commandExecutor.getConnectionManager().getId();
-        this.internalLockLeaseTime = commandExecutor.getConnectionManager().getCfg().getLockWatchdogTimeout();
-        this.entryName = id + ":" + name;
+        this.internalLockLeaseTime = commandExecutor.getConnectionManager().getCfg().getLockWatchdogTimeout();//默认是30000
+        this.entryName = id + ":" + name;//name就是Lock的名称，也就是getLock(name)
         this.pubSub = commandExecutor.getConnectionManager().getSubscribeService().getLockPubSub();
     }
 
@@ -145,7 +145,7 @@ public class RedissonLock extends RedissonExpirable implements RLock {
     @Override
     public void lock() {
         try {
-            lock(-1, null, false);
+            lock(-1, null, false);//leaseTime：租约时间；时间单位；是否可中断
         } catch (InterruptedException e) {
             throw new IllegalStateException();
         }
@@ -173,12 +173,12 @@ public class RedissonLock extends RedissonExpirable implements RLock {
 
     private void lock(long leaseTime, TimeUnit unit, boolean interruptibly) throws InterruptedException {
         long threadId = Thread.currentThread().getId();
-        Long ttl = tryAcquire(-1, leaseTime, unit, threadId);
-        // lock acquired
+        Long ttl = tryAcquire(-1, leaseTime, unit, threadId);//waitTime，leaseTime，单位，线程id
+        // lock acquired,如果为空，当前线程获取锁成功，否则已经被其他客户端加锁
         if (ttl == null) {
             return;
         }
-
+        //等待锁被释放
         RFuture<RedissonLockEntry> future = subscribe(threadId);
         if (interruptibly) {
             commandExecutor.syncSubscriptionInterrupted(future);
@@ -195,7 +195,7 @@ public class RedissonLock extends RedissonExpirable implements RLock {
                 }
 
                 // waiting for message
-                if (ttl >= 0) {
+                if (ttl >= 0) {//等待锁释放
                     try {
                         future.getNow().getLatch().tryAcquire(ttl, TimeUnit.MILLISECONDS);
                     } catch (InterruptedException e) {
@@ -212,7 +212,7 @@ public class RedissonLock extends RedissonExpirable implements RLock {
                     }
                 }
             }
-        } finally {
+        } finally {//取消订阅
             unsubscribe(future, threadId);
         }
 //        get(lockAsync(leaseTime, unit));
@@ -242,11 +242,11 @@ public class RedissonLock extends RedissonExpirable implements RLock {
     }
 
     private <T> RFuture<Long> tryAcquireAsync(long waitTime, long leaseTime, TimeUnit unit, long threadId) {
-        if (leaseTime != -1) {
+        if (leaseTime != -1) {//租约时间不等于-1，使用 具体的租约时间leaseTime作为第二个参数
             return tryLockInnerAsync(waitTime, leaseTime, unit, threadId, RedisCommands.EVAL_LONG);
         }
         RFuture<Long> ttlRemainingFuture = tryLockInnerAsync(waitTime, internalLockLeaseTime,
-                                                                TimeUnit.MILLISECONDS, threadId, RedisCommands.EVAL_LONG);
+                                                                TimeUnit.MILLISECONDS, threadId, RedisCommands.EVAL_LONG);//租约时间等于-1，使用默认的internalLockLeaseTime30秒作为第二个参数
         ttlRemainingFuture.onComplete((ttlRemaining, e) -> {
             if (e != null) {
                 return;
@@ -342,10 +342,10 @@ public class RedissonLock extends RedissonExpirable implements RLock {
             EXPIRATION_RENEWAL_MAP.remove(getEntryName());
         }
     }
-
+     //key:getLock()中传递的参数，codec：
     protected <T> RFuture<T> evalWriteAsync(String key, Codec codec, RedisCommand<T> evalCommandType, String script, List<Object> keys, Object... params) {
         CommandBatchService executorService = createCommandBatchService();
-        RFuture<T> result = executorService.evalWriteAsync(key, codec, evalCommandType, script, keys, params);
+        RFuture<T> result = executorService.evalWriteAsync(key, codec, evalCommandType, script, keys, params);//codec:LongCode
         if (commandExecutor instanceof CommandBatchService) {
             return result;
         }
