@@ -7,15 +7,21 @@ import org.redisson.config.Config;
 
 public class RedissonTest implements Runnable {
 
-    private static int count=10000;
+    private static int count = 10000;
 
     private static RedissonClient redissonClient;
-    private static  void init() {
+
+    public RedissonTest() {
+
+    }
+
+    private static void init() {
         Config config = new Config();
-        config.useSingleServer().setAddress("redis//127.0.0.1:6379").setDatabase(10);
+        config.useSingleServer().setAddress("redis://127.0.0.1:6379").setDatabase(10);
 
         redissonClient = Redisson.create(config);
     }
+
     @Override
     public void run() {
 
@@ -25,5 +31,22 @@ public class RedissonTest implements Runnable {
         System.out.println(count);
         anyLock.unlock();
 
+    }
+
+    public static void main(String[] args) {
+        init();
+
+        for (int i = 0; i < 100; i++) {
+            new Thread(new RedissonTest()).start();
+        }
+    }
+
+
+    public static void main2(String[] args) {
+        init();
+
+        for (int i = 0; i < 100; i++) {
+            new Thread(new RedissonTest()).start();
+        }
     }
 }
